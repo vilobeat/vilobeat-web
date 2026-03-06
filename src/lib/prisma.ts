@@ -2,45 +2,45 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaD1 } from '@prisma/adapter-d1'
 import path from 'path'
 
-const prismaClientSingleton = () => {
-  // Try to use Cloudflare D1 first from global/env context if deployed
+const getPrismaClient = () => {
   if (process.env.NODE_ENV === 'production') {
-    // In edge runtime, we get the binding from the context
-    let d1Binding = null;
+    let d1Binding = (process.env as any).vilobeat_db;
 
-    // Cloudflare Pages/OpenNext exposes the binding via process.env
-    d1Binding = (process.env as any).vilobeat_db
-
-    if (d1Binding) {
-      const adapter = new PrismaD1(d1Binding)
-      return new PrismaClient({ adapter })
+    // Explicit throw if binding is missing during a request
+    if (!d1Binding) {
+      console.warn("D1 Binding vilobeat_db is missing from process.env!");
     }
+
+    const adapter = new PrismaD1(d1Binding);
+    return new PrismaClient({ adapter });
   }
 
   // Fallback to local SQLite using better-sqlite3
-  // Make sure we only require this in Node environments
-  let dbPath;
+  let dbPath = 'dev.db';
   if (typeof process !== 'undefined' && process.cwd) {
-    dbPath = path.resolve(process.cwd(), 'dev.db')
-  } else {
-    dbPath = 'dev.db'; // fallback
+    dbPath = path.resolve(process.cwd(), 'dev.db');
   }
 
-  // Note: better-sqlite3 can't run on Edge, but this branch only hits in local dev/Node
-  // Use a string variable to prevent Webpack/Vite from statically analyzing and bundling it!
   const moduleName = '@prisma/adapter-better-sqlite3';
   const { PrismaBetterSqlite3 } = require(moduleName);
-
-  const adapter = new PrismaBetterSqlite3({ url: dbPath })
-  return new PrismaClient({ adapter })
-}
+  const adapter = new PrismaBetterSqlite3({ url: dbPath });
+  return new PrismaClient({ adapter });
+};
 
 declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
+  prismaGlobal: any;
 } & typeof global;
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
+// Lazy initialization via Proxy so process.env bindings are checked during the request!
+const prisma = globalThis.prismaGlobal ?? new Proxy({} as any, {
+  get(target, prop) {
+    if (!target.__client) {
+      target.__client = getPrismaClient();
+    }
+    return target.__client[prop];
+  }
+});
 
-export default prisma
+export default prisma;
 
-if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
+if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;
