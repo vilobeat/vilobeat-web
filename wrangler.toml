@@ -1,9 +1,5 @@
 name = "vilobeat-web"
-main = ".vercel/output/static/_worker.js/index.js"
-
-[assets]
-directory = ".vercel/output/static"
-binding = "ASSETS"
+main = ".open-next/worker.js"
 compatibility_date = "2024-03-29"
 compatibility_flags = ["nodejs_compat"]
 
@@ -11,3 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "vilobeat_db"
 database_name = "vilobeat-db"
 database_id = "db63eeb2-ae36-4244-a2ec-b94873edb2cf"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"

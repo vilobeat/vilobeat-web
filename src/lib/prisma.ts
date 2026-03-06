@@ -9,14 +9,8 @@ const prismaClientSingleton = () => {
     // In edge runtime, we get the binding from the context
     let d1Binding = null;
 
-    // Cloudflare Pages exposes the binding via process.env in some node-compat setups
-    // or through getRequestContext() if using @cloudflare/next-on-pages
-    try {
-      const { getRequestContext } = require('@cloudflare/next-on-pages')
-      d1Binding = getRequestContext().env.vilobeat_db
-    } catch (e) {
-      d1Binding = (process.env as any).vilobeat_db
-    }
+    // Cloudflare Pages/OpenNext exposes the binding via process.env
+    d1Binding = (process.env as any).vilobeat_db
 
     if (d1Binding) {
       const adapter = new PrismaD1(d1Binding)
