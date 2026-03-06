@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client'
-// Import omitted to prevent bundle bloat in Cloudflare edge build.
-// import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaD1 } from '@prisma/adapter-d1'
 import path from 'path'
 
