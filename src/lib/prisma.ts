@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+// Import omitted to prevent bundle bloat in Cloudflare edge build.
+// import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaD1 } from '@prisma/adapter-d1'
 import path from 'path'
 
@@ -28,6 +29,10 @@ const prismaClientSingleton = () => {
   }
 
   // Note: better-sqlite3 can't run on Edge, but this branch only hits in local dev/Node
+  // Use a string variable to prevent Webpack/Vite from statically analyzing and bundling it!
+  const moduleName = '@prisma/adapter-better-sqlite3';
+  const { PrismaBetterSqlite3 } = require(moduleName);
+
   const adapter = new PrismaBetterSqlite3({ url: dbPath })
   return new PrismaClient({ adapter })
 }
