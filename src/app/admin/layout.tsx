@@ -8,7 +8,20 @@ const spaceGrotesk = Space_Grotesk({
     weight: ['300', '400', '500', '600', '700'],
 });
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+    const session = await auth();
+
+    if (!session || !session.user) {
+        redirect('/login');
+    }
+
+    if (session.user.role !== 'ADMIN') {
+        redirect('/'); // Or a dedicated unauthorized page
+    }
+
     return (
         <div className={`min-h-screen bg-background text-foreground flex ${spaceGrotesk.variable} font-grotesk`}>
             {/* Sidebar fixed size left */}
