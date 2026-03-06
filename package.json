@@ -14,9 +14,11 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",
     "@aws-sdk/s3-request-presigner": "^3.1001.0",
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@fontsource/space-grotesk": "^5.2.10",
     "@google/genai": "^1.44.0",
     "@prisma/adapter-better-sqlite3": "^7.4.2",
+    "@prisma/adapter-d1": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
@@ -43,6 +45,7 @@
     "prisma": "^7.4.2",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.71.0"
   }
 }

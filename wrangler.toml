@@ -1,0 +1,9 @@
+name = "vilobeat-web"
+pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2024-03-29"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "vilobeat_db"
+database_name = "vilobeat-db"
+database_id = "db63eeb2-ae36-4244-a2ec-b94873edb2cf"
