@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ──────────────────────────── USER ────────────────────────────
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String
+  role                  String    @default("ARTIST")
+  // Roles: SUPER_ADMIN, DISTRIBUTION_MANAGER, CREATIVE_MANAGER, FINANCE_ADMIN, SUPPORT_STAFF, ARTIST
+  subscriptionTier      String    @default("BASIC")
+  // Tiers: BASIC ($15), PRO ($25), ELITE ($42), EXPERT ($80)
+  subscriptionStartDate DateTime?
+  // DSP Unlock
+  dspUnlocked           Boolean   @default(false)
+  dspUnlockPaidAt       DateTime?
+  // Profile
+  artistName            String?
+  phone                 String?
+  bio                   String?
+  genre                 String?
+  socialLinks           String?   // JSON: { instagram, twitter, tiktok, spotify }
+  profilePictureUrl     String?
+  // Wallet
+  walletBalance         Float     @default(0)
+  // Timestamps
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  songs              Song[]
+  requestedTasks     Task[]              @relation("RequestedTasks")
+  assignedTasks      Task[]              @relation("AssignedTasks")
+  royalties          RoyaltyLedger[]
+  analytics          Analytics[]
+  quota              Quota?
+  adminLogs          AdminLog[]
+  lyrics             Lyrics[]
+  coverArts          CoverArt[]
+  withdrawalRequests WithdrawalRequest[]
+  notifications      Notification[]
+  sentBroadcasts     Broadcast[]
+
+  expoPushToken      String?
+}
+
+// ──────────────────────────── SONG ────────────────────────────
+model Song {
+  id             String    @id @default(uuid())
+  artistId       String
+  title          String
+  artistName     String?   // Display artist name on DSPs
+  featuredArtists String?  // Comma separated
+  genre          String?
+  subgenre       String?
+  releaseDate    DateTime?
+  explicit       Boolean   @default(false)
+  coverUrl       String?
+  audioUrl       String
+  audioSource    String    @default("UPLOAD") // UPLOAD, MASTERED, LYRICS_TO_MUSIC
+  masteringTaskId String?
+  lyricsToMusicTaskId String?
+  isrc           String?
+  labelName      String?
+  producer       String?
+  composer       String?
+  status         String    @default("DRAFT")
+  // Statuses: DRAFT, PENDING_REVIEW, PROCESSING, LIVE, REJECTED
+  shareLink      String?   // Manually set by admin after distribution
+  dspLinks       String?   // JSON: { spotify, apple, boomplay, audiomack }
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  artist        User           @relation(fields: [artistId], references: [id])
+  tasks         Task[]
+  analytics     Analytics[]
+  royaltySplits RoyaltySplit[]
+  coverArts     CoverArt[]
+}
+
+// ──────────────────────────── TASK ────────────────────────────
+model Task {
+  id                      String    @id @default(uuid())
+  type                    String
+  // Types: DISTRIBUTION, MASTERING, COVER_CREATION, LYRICS_CREATION, LYRICS_TO_MUSIC
+  status                  String    @default("PENDING")
+  // Statuses: PENDING, IN_PROGRESS, COMPLETED, REJECTED
+  songId                  String?
+  requestedById           String
+  assignedToId            String?
+  meta                    String?   // JSON string
+  downloadUrl             String?   // Completed file for user to download
+  estimatedCompletionDate DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  song        Song? @relation(fields: [songId], references: [id])
+  requestedBy User  @relation("RequestedTasks", fields: [requestedById], references: [id])
+  assignedTo  User? @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  history     TaskHistory[]
+}
+
+// ─────────────────────── TASK HISTORY (version tracking) ──────
+model TaskHistory {
+  id        String   @id @default(uuid())
+  taskId    String
+  action    String   // STATUS_CHANGE, ASSIGNED, FILE_UPLOADED, METADATA_UPDATED
+  oldValue  String?
+  newValue  String?
+  changedBy String   // userId
+  timestamp DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id])
+}
+
+// ──────────────────────── ROYALTY LEDGER ───────────────────────
+model RoyaltyLedger {
+  id          String   @id @default(uuid())
+  artistId    String
+  amount      Float
+  description String?
+  platform    String?  // Spotify, Apple Music, Boomplay, etc.
+  songId      String?  // Link to specific song
+  date        DateTime @default(now())
+
+  artist User @relation(fields: [artistId], references: [id])
+}
+
+// ──────────────────────── ROYALTY SPLIT ────────────────────────
+model RoyaltySplit {
+  id         String @id @default(uuid())
+  songId     String
+  name       String
+  email      String
+  percentage Float  // Must total 100% per song
+  userId     String? // If the collaborator is a registered user
+
+  song Song @relation(fields: [songId], references: [id])
+}
+
+// ──────────────────────── ANALYTICS ───────────────────────────
+model Analytics {
+  id             String   @id @default(uuid())
+  artistId       String
+  songId         String
+  totalStreams    Int      @default(0)
+  monthlyStreams  String?  // JSON: { "2026-01": 500, "2026-02": 800 }
+  platformBreakdown String? // JSON: { "spotify": 300, "apple": 200, ... }
+  dspLinks       String?  // JSON: { "spotify": "url", "apple": "url" }
+  updatedAt      DateTime @updatedAt
+
+  artist User @relation(fields: [artistId], references: [id])
+  song   Song @relation(fields: [songId], references: [id])
+}
+
+// ──────────────────────── QUOTA ───────────────────────────────
+model Quota {
+  id                String   @id @default(uuid())
+  artistId          String   @unique
+  releasesUsed      Int      @default(0)
+  masteringUsed     Int      @default(0)
+  songCreationUsed  Int      @default(0)
+  coverCreationUsed Int      @default(0)
+  lyricsUsed        Int      @default(0)
+  audioSeparatorUsed Int     @default(0)
+  voiceReferenceUsed Int     @default(0)
+  lyricsToMusicUsed  Int     @default(0)
+  resetDate         DateTime
+
+  artist User @relation(fields: [artistId], references: [id])
+}
+
+// ──────────────────────── LYRICS ──────────────────────────────
+model Lyrics {
+  id        String   @id @default(uuid())
+  userId    String
+  content   String
+  mood      String?
+  theme     String?
+  genre     String?
+  tempo     String?
+  storyline String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ──────────────────────── COVER ART ──────────────────────────
+model CoverArt {
+  id       String  @id @default(uuid())
+  userId   String
+  songId   String?
+  imageUrl String
+  prompt   String? // AI generation prompt
+  source   String  @default("UPLOAD")
+  // Sources: UPLOAD, GENERATED, DISTRIBUTE_FLOW
+  createdAt DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id])
+  song Song? @relation(fields: [songId], references: [id])
+}
+
+// ──────────────────── WITHDRAWAL REQUEST ──────────────────────
+model WithdrawalRequest {
+  id        String   @id @default(uuid())
+  artistId  String
+  amount    Float
+  status    String   @default("PENDING")
+  // Statuses: PENDING, APPROVED, REJECTED, PAID
+  adminNote String?
+  processedById String?
+  processedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  artist User @relation(fields: [artistId], references: [id])
+}
+
+// ──────────────────────── ADMIN LOG ───────────────────────────
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  targetId  String?  // ID of affected entity (task, user, song, etc.)
+  targetType String? // TASK, USER, SONG, ROYALTY, WITHDRAWAL, etc.
+  meta      String?  // JSON string
+  timestamp DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+}
+
+// ──────────────────────── ADMIN ROLE CONFIG ──────────────────────
+model AdminRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  permissions String   // JSON array of permission keys: ["MANAGE_DISTRIBUTION", "MANAGE_USERS", "MANAGE_BROADCAST", "MANAGE_ROLES", "MANAGE_FINANCE"]
+  createdAt   DateTime @default(now())
+}
+
+// ──────────────────────── NOTIFICATION ────────────────────────
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String   // Target user
+  title       String
+  message     String   // The content of the broadcast
+  type        String   @default("SYSTEM") // SYSTEM, PROMO, ALERT, STATUS_UPDATE
+  read        Boolean  @default(false)
+  actionUrl   String?  // Optional link (e.g., deep link to a song or settings)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ──────────────────────── BROADCAST HISTORY ──────────────────────
+model Broadcast {
+  id              String   @id @default(uuid())
+  title           String
+  message         String
+  targetAudience  String
+  channels        String   // JSON string
+  status          String   @default("COMPLETED") // COMPLETED, SCHEDULED
+  scheduledFor    DateTime?
+  sentByAdminId   String
+  notifiedCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  admin           User     @relation(fields: [sentByAdminId], references: [id])
+}
