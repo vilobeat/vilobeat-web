@@ -32,21 +32,21 @@ export async function GET(req: Request) {
 
         // Synthesize logs
         const logs = [
-            ...recentUsers.map(u => ({
+            ...recentUsers.map((u: any) => ({
                 id: `usr_${u.id}`,
                 action: 'USER_CREATED',
                 timestamp: u.createdAt,
                 details: `New user ${u.email} joined as ${u.role}.`,
                 type: 'INFO'
             })),
-            ...recentRoyalties.map(r => ({
+            ...recentRoyalties.map((r: any) => ({
                 id: `roy_${r.id}`,
                 action: 'REVENUE_ADDED',
                 timestamp: r.date,
                 details: `Added $${r.amount} to ${r.artist?.email} for track ID "${r.songId}".`,
                 type: 'FINANCE'
             })),
-            ...recentWithdrawals.map(w => ({
+            ...recentWithdrawals.map((w: any) => ({
                 id: `wdr_${w.id}`,
                 action: `WITHDRAWAL_${w.status}`,
                 timestamp: w.createdAt,
