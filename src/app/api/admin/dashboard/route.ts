@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { NextResponse, NextRequest } from "next/server"
+import { getToken } from "next-auth/jwt"
 import prisma from "@/lib/prisma"
 
-export async function GET() {
-    const session = await auth()
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
-    if (!session?.user || session.user.role === "ARTIST") {
+export async function GET(req: NextRequest) {
+    const secret = process.env.NEXTAUTH_SECRET || "vilobeat-super-secret-key-for-local-dev-replace-later";
+    const token = await getToken({ req, secret });
+
+    if (!token || token.role === "ARTIST") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
@@ -44,13 +48,14 @@ export async function GET() {
 
     // Calculate MRR (Monthly Recurring Revenue) estimation for Platform Revenue
     const tierPrices: Record<string, number> = { PRO: 25, ELITE: 42, EXPERT: 80 };
-    const estimatedMRR = platformRevenue.reduce((acc, user) => acc + (tierPrices[user.subscriptionTier] || 0), 0);
+    const estimatedMRR = platformRevenue.reduce((acc: number, user: { subscriptionTier: string }) => acc + (tierPrices[user.subscriptionTier] || 0), 0);
+
 
     const activities = [
-        ...recentSignups.map(u => ({ id: `user_${u.id}`, type: 'USER_SIGNUP', title: 'New user signup', desc: u.email, date: u.createdAt })),
-        ...recentSongs.map(s => ({ id: `song_${s.id}`, type: 'SONG_SUBMITTED', title: 'Song submitted', desc: `"${s.title}" by ${s.artist.email}`, date: s.createdAt })),
-        ...recentTasks.map(t => ({ id: `task_${t.id}`, type: 'TASK_COMPLETED', title: `${t.type.replace(/_/g, ' ')} ${t.status === 'COMPLETED' ? 'completed' : 'requested'}`, desc: `Requested by ${t.requestedBy.email}`, date: t.updatedAt })),
-        ...recentWithdrawals.map(w => ({ id: `with_${w.id}`, type: 'WITHDRAWAL_REQUEST', title: 'Withdrawal requested', desc: `$${w.amount} requested by ${w.artist.email}`, date: w.createdAt }))
+        ...recentSignups.map((u: any) => ({ id: `user_${u.id}`, type: 'USER_SIGNUP', title: 'New user signup', desc: u.email, date: u.createdAt })),
+        ...recentSongs.map((s: any) => ({ id: `song_${s.id}`, type: 'SONG_SUBMITTED', title: 'Song submitted', desc: `"${s.title}" by ${s.artist.email}`, date: s.createdAt })),
+        ...recentTasks.map((t: any) => ({ id: `task_${t.id}`, type: 'TASK_COMPLETED', title: `${t.type.replace(/_/g, ' ')} ${t.status === 'COMPLETED' ? 'completed' : 'requested'}`, desc: `Requested by ${t.requestedBy.email}`, date: t.updatedAt })),
+        ...recentWithdrawals.map((w: any) => ({ id: `with_${w.id}`, type: 'WITHDRAWAL_REQUEST', title: 'Withdrawal requested', desc: `$${w.amount} requested by ${w.artist.email}`, date: w.createdAt }))
     ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 15);
 
     return NextResponse.json({

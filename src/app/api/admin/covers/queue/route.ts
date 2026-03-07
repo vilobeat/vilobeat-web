@@ -15,7 +15,7 @@ export async function GET(req: Request) {
         });
 
         // MVP: CoverArt doesn't have a status in schema, we will mock it based on imageUrl presence
-        const formattedCovers = covers.map(cover => ({
+        const formattedCovers = covers.map((cover: any) => ({
             ...cover,
             status: cover.imageUrl ? 'COMPLETED' : 'PENDING'
         }));
